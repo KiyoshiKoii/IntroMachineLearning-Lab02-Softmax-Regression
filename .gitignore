@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environment
+.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Machine Learning Models
+web/backend/model/*.joblib
+web/backend/model/*.pickle
+
+# Node.js
+node_modules/
+web/backend/node_modules/
+web/frontend/node_modules/
+
+# pnpm
+web/backend/pnpm-lock.yaml
+web/frontend/pnpm-lock.yaml
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+web/backend/.env
+web/frontend/.env
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Build outputs
+web/frontend/build/
+
+# Data (keep structure, ignore large files if needed)
+# data/raw/*.csv
+# data/processed/*
+
+# Reports
+# report/*.pdf
+
+.next
