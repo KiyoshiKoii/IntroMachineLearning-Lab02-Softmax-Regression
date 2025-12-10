@@ -1,31 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Mock prediction function (would normally call Python model)
-function mockPredict(imageData: string) {
-  // In a real implementation, this would:
-  // 1. Send image to Python backend
-  // 2. Preprocess image (resize to 28x28, normalize)
-  // 3. Extract features
-  // 4. Run through Softmax Regression model
-  // 5. Return probabilities
-
-  // For demo purposes, generate mock probabilities
-  const probabilities = Array(10)
-    .fill(0)
-    .map(() => Math.random())
-  const sum = probabilities.reduce((a, b) => a + b, 0)
-  const normalizedProbs = probabilities.map((p) => p / sum)
-
-  // Find digit with highest probability
-  const digit = normalizedProbs.indexOf(Math.max(...normalizedProbs))
-  const confidence = normalizedProbs[digit]
-
-  return {
-    digit,
-    confidence,
-    probabilities: normalizedProbs,
-  }
-}
+// Python model service URL
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:5000"
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,12 +11,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 })
     }
 
-    // Process image and get prediction
-    const result = mockPredict(image)
+    // Call Python model service
+    const response = await fetch(`${PYTHON_SERVICE_URL}/predict`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ image }),
+    })
 
+    if (!response.ok) {
+      const error = await response.json()
+      console.error("[API] Python service error:", error)
+      return NextResponse.json(
+        { error: error.error || "Prediction failed" },
+        { status: response.status }
+      )
+    }
+
+    const result = await response.json()
     return NextResponse.json(result)
   } catch (error) {
-    console.error("[v0] Prediction API error:", error)
+    console.error("[API] Prediction error:", error)
+    
+    // Check if Python service is running
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      return NextResponse.json(
+        { 
+          error: "Python model service is not running. Please start it with: cd python_service && python model_service.py" 
+        },
+        { status: 503 }
+      )
+    }
+    
     return NextResponse.json({ error: "Prediction failed" }, { status: 500 })
   }
 }
