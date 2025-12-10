@@ -1,121 +1,145 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useRef, useEffect, useState } from "react"
-import { cn } from "@/lib/utils"
+import {
+  useRef,
+  useEffect,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import { cn } from "@/lib/utils";
+
+export interface DrawingCanvasRef {
+  clear: () => void;
+}
 
 interface DrawingCanvasProps {
-  onPredict: (canvas: HTMLCanvasElement) => void
-  onClear: () => void
+  onPredict: (canvas: HTMLCanvasElement) => void;
+  onClear: () => void;
 }
 
-export function DrawingCanvas({ onPredict, onClear }: DrawingCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [isDrawing, setIsDrawing] = useState(false)
+export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(
+  ({ onPredict, onClear }, ref) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [isDrawing, setIsDrawing] = useState(false);
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+    useImperativeHandle(ref, () => ({
+      clear: clearCanvas,
+    }));
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    // Initialize canvas
-    ctx.fillStyle = "black"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.strokeStyle = "white"
-    ctx.lineWidth = 20
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-  }, [])
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true)
-    draw(e)
-  }
+      // Initialize canvas
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 20;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+    }, []);
 
-  const stopDrawing = () => {
-    setIsDrawing(false)
-    const canvas = canvasRef.current
-    if (canvas) {
-      onPredict(canvas)
-    }
-  }
+    const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+      setIsDrawing(true);
+      draw(e);
+    };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing && e.type !== "mousedown") return
+    const stopDrawing = () => {
+      if (!isDrawing) return;
+      setIsDrawing(false);
+      const canvas = canvasRef.current;
+      if (canvas) {
+        onPredict(canvas);
+      }
+    };
 
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!isDrawing && e.type !== "mousedown") return;
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width) * canvas.width
-    const y = ((e.clientY - rect.top) / rect.height) * canvas.height
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    if (e.type === "mousedown") {
-      ctx.beginPath()
-      ctx.moveTo(x, y)
-    } else {
-      ctx.lineTo(x, y)
-      ctx.stroke()
-    }
-  }
+      const rect = canvas.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+      const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
 
-  const clearCanvas = () => {
-    const canvas = canvasRef.current
-    if (!canvas) return
+      if (e.type === "mousedown") {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+    };
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+    const clearCanvas = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    ctx.fillStyle = "black"
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    onClear()
-  }
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-  // Touch support
-  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
-    const touch = e.touches[0]
-    const mouseEvent = new MouseEvent("mousedown", {
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-    })
-    canvasRef.current?.dispatchEvent(mouseEvent)
-  }
+      ctx.fillStyle = "black";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      onClear();
+    };
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault()
-    const touch = e.touches[0]
-    const mouseEvent = new MouseEvent("mousemove", {
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-    })
-    canvasRef.current?.dispatchEvent(mouseEvent)
-  }
+    // Touch support
+    const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent("mousedown", {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      });
+      canvasRef.current?.dispatchEvent(mouseEvent);
+    };
 
-  return (
-    <div className="space-y-2">
-      <div className="border-2 border-border rounded-lg overflow-hidden bg-black">
-        <canvas
-          ref={canvasRef}
-          width={280}
-          height={280}
-          className={cn("w-full h-auto cursor-crosshair touch-none")}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={stopDrawing}
-        />
+    const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent("mousemove", {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+      });
+      canvasRef.current?.dispatchEvent(mouseEvent);
+    };
+
+    const handleClear = () => {
+      clearCanvas();
+    };
+
+    return (
+      <div className='space-y-2'>
+        <div className='border-2 border-border rounded-lg overflow-hidden bg-black'>
+          <canvas
+            ref={canvasRef}
+            width={280}
+            height={280}
+            className={cn("w-full h-auto cursor-crosshair touch-none")}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={stopDrawing}
+          />
+        </div>
+        <p className='text-xs text-muted-foreground text-center'>
+          Draw a digit (0-9) in the canvas above
+        </p>
       </div>
-      <p className="text-xs text-muted-foreground text-center">Draw a digit (0-9) in the canvas above</p>
-    </div>
-  )
-}
+    );
+  }
+);
+DrawingCanvas.displayName = "DrawingCanvas";
