@@ -11,8 +11,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import base64
 from io import BytesIO
-from PIL import Image
-
+from PIL import Image,ImageOps
 app = Flask(__name__)
 CORS(app)  # Enable CORS for Next.js frontend
 
@@ -161,18 +160,6 @@ def health_check():
 def predict():
     """
     Prediction endpoint
-    
-    Expects JSON body:
-    {
-        "image": "base64_encoded_image_string"
-    }
-    
-    Returns:
-    {
-        "digit": int,
-        "confidence": float,
-        "probabilities": [float] * 10
-    }
     """
     try:
         # Check if model is loaded
@@ -186,8 +173,42 @@ def predict():
         
         image_data = data['image']
         
-        # Preprocess image
-        image_flat = preprocess_image(image_data)
+        # Decode base64
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        image_bytes = base64.b64decode(image_data)
+        image = Image.open(BytesIO(image_bytes))
+        
+        # ---------------------------------------------------------
+        # XỬ LÝ ẢNH (LOGIC ĐÃ SỬA)
+        # ---------------------------------------------------------
+        
+        # 1. Convert to Grayscale
+        image = image.convert('L')
+        
+        # 2. Invert colors if needed (Auto-detect background)
+        # Kiểm tra trung bình pixel. Nếu > 127 tức là nền sáng (trắng) -> Đảo màu
+        stat = np.array(image).mean()
+        if stat > 127:
+            print("Detected light background, inverting image...")
+            image = ImageOps.invert(image)
+            
+        # 3. Resize to 28x28 using LANCZOS
+        image = image.resize((28, 28), Image.Resampling.LANCZOS)
+        
+        # 4. Convert to NumPy Array & Normalize (Thay thế cho hàm preprocess_image cũ)
+        image_array = np.array(image, dtype=np.float32)
+        
+        # Normalize to [0, 1]
+        image_array = image_array / 255.0
+        
+        # Flatten to (784,)
+        image_flat = image_array.flatten()
+        
+        # ---------------------------------------------------------
+        # DỰ ĐOÁN
+        # ---------------------------------------------------------
         
         # Transform with PCA
         image_pca = pca.transform(image_flat.reshape(1, -1))
@@ -214,7 +235,6 @@ def predict():
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
-
 
 @app.route('/model-info', methods=['GET'])
 def model_info():
