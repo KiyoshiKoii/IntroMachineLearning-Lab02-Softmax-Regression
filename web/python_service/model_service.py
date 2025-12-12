@@ -65,7 +65,7 @@ class PCATransformer:
 # Load model at startup
 MODEL_PATH = os.path.join(os.path.dirname(__file__), '../public/models/softmax_pca_model.pkl')
 
-print("🔄 Loading model...")
+print("[INFO] Loading model...")
 print(f"   Checking path: {MODEL_PATH}")
 print(f"   File exists: {os.path.exists(MODEL_PATH)}")
 
@@ -75,7 +75,7 @@ model = None
 
 try:
     if not os.path.exists(MODEL_PATH):
-        print(f"❌ Model file not found!")
+        print(f"[ERROR] Model file not found!")
         print(f"   Please run notebook Phần 7 to export the model first.")
     else:
         with open(MODEL_PATH, 'rb') as f:
@@ -86,11 +86,11 @@ try:
         pca = PCATransformer(model_data['pca'])
         model = SoftmaxRegression(model_data['model'])
         
-        print("✅ Model loaded successfully!")
+        print("[SUCCESS] Model loaded successfully!")
         print(f"   Accuracy: {model_data['metrics']['accuracy']:.4f}")
-        print(f"   Feature dimensions: 784 → {pca.n_components}")
+        print(f"   Feature dimensions: 784 -> {pca.n_components}")
 except Exception as e:
-    print(f"❌ Error loading model: {e}")
+    print(f"[ERROR] Error loading model: {e}")
     import traceback
     traceback.print_exc()
     model_data = None
@@ -181,23 +181,24 @@ def predict():
         image = Image.open(BytesIO(image_bytes))
         
         # ---------------------------------------------------------
-        # XỬ LÝ ẢNH (LOGIC ĐÃ SỬA)
+        # XỬ LÝ ẢNH 
         # ---------------------------------------------------------
         
         # 1. Convert to Grayscale
         image = image.convert('L')
-        
+        # image.show()
         # 2. Invert colors if needed (Auto-detect background)
         # Kiểm tra trung bình pixel. Nếu > 127 tức là nền sáng (trắng) -> Đảo màu
         stat = np.array(image).mean()
         if stat > 127:
             print("Detected light background, inverting image...")
             image = ImageOps.invert(image)
-            
+        threshold_value = 255/2 
+        image = image.point(lambda p: 255 if p > threshold_value else 0)
         # 3. Resize to 28x28 using LANCZOS
         image = image.resize((28, 28), Image.Resampling.LANCZOS)
-        
-        # 4. Convert to NumPy Array & Normalize (Thay thế cho hàm preprocess_image cũ)
+        # image.show()
+        # 4. Convert to NumPy Array & Normalize 
         image_array = np.array(image, dtype=np.float32)
         
         # Normalize to [0, 1]
@@ -226,12 +227,12 @@ def predict():
         })
         
     except ValueError as e:
-        print(f"❌ ValueError: {e}")
+        print(f"[ERROR] ValueError: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        print(f"❌ Prediction error: {e}")
+        print(f"[ERROR] Prediction error: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
@@ -259,7 +260,7 @@ def model_info():
 
 if __name__ == '__main__':
     print("\n" + "="*60)
-    print("🚀 Starting Python Model Service")
+    print("[INFO] Starting Python Model Service")
     print("="*60)
     print(f"   Model path: {MODEL_PATH}")
     print(f"   Server: http://localhost:5000")
